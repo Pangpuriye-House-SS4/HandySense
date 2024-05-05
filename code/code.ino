@@ -408,7 +408,7 @@ void loop()
     Serial_Monitor();
     updatesetTime();
     SetTimeOpenWater();
-    //  delay 15 sec  
-    delay(15000);
+    //  delay 15 sec
+    delay(30000);
     Serial.println(String("----End----"));
 }
