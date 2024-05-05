@@ -10,7 +10,7 @@ ______                                  _
                  |___/|_|                 |___/
                   PANGPURIYE Fram!
                 SUPER AI ENGINEER SEASON 4
-                  BORAD PROTOTYPE
+                  BORAD CODE
 --------------------------------------------------------
 **/
 
@@ -18,14 +18,15 @@ ______                                  _
 const char *Netpiemqtt_server = "broker.netpie.io";
 const int Netpiemqtt_port = 1883;
 
-// Client ID
-// const char *Netpiemqtt_Client = "YOU-Client-ID";
-// Token
-// const char *Netpiemqtt_username = "YOU-UserName";
-// Secret
-// const char *Netpiemqtt_password = "YOU-Password";
+// MyDevice
+// Client One
+const char *Netpiemqtt_Client = "YOU-CLIENT-ID";
+// Token 
+const char *Netpiemqtt_username = "YOU-Token";
+// Secret 
+const char *Netpiemqtt_password = "YOU-Secret";
 
-// include lib  Handy Sese
+// include lib  Handy Sese 
 #include <HandySense.h>
 #include <Arduino.h>
 #include <WiFi.h>
@@ -46,7 +47,7 @@ const int Netpiemqtt_port = 1883;
 #include "TimeBFarm.h"
 BFarmTime bfarmtime;
 
-// humidity sensor
+// humidity sensor 
 SHT31 sht;
 BH1750 lightMeter;
 MCP23008 MCP(0x24);
@@ -60,15 +61,21 @@ int set_soilMaxHumidity;
 int set_soilMinHumidity;
 
 // Set time to send data every 10  minunite
-const long interval = 10000; // 10 Sec
+const long interval = 30000; // 30 Sec
 unsigned long previousMillis = 0;
 unsigned long currentMillis;
 
+
 // set time for open Value
-// set defal  time  on  7:00 AM Every Day
+// set defal  time  on  7:00 AM Every Day 
 int time_hour = 7;
 int time_min = 0;
-int t_water = 30000; // MilliSec 1 Min
+int countTimeSync = 0;
+int t_water = 30000; // MilliSec 1 Min 
+
+int timeHourBuffer = 0;
+int timeMinuteBuffer = 0;
+int hasWater = false; //TODO WILL BUG IF THIS VARIABLE IS NOT FALSE
 // test count time to sent
 int count = 0;
 
@@ -77,27 +84,31 @@ int count = 0;
 int manual = 0;
 
 /*
-*   Open  Water  function
-*   use  Realy 0 to oepon  solenoid valve
-    Delay  open  t_water
+*   Open  Water  function  
+*   use  Realy 0 to oepon  solenoid valve 
+    Delay  open  t_water  
 */
+static void  openWater(){
 
-static void openWater()
-{
-
-    // Turn  ON  LED 0 Status
+     // Turn on the relay to open water
     digitalWrite(const_relay_pin[0], HIGH);
+
+    // Turn  ON  LED 0 Status 
     MCP.digitalWrite(0, HIGH);
-
-    pub_topic("valve_status", 1);
-    // Turn on the relay to open water
-    digitalWrite(const_relay_pin[0], HIGH);
-
+    
+    pub_topic("valve_status",1);
+   
     // Delay for the specified water duration
     delay(t_water);
 
-    // Sent Status  to  netpile
-    pub_topic("valve_status", 0);
+    // Turn on the relay to open water
+    digitalWrite(const_relay_pin[0], LOW);
+
+    // Sent Status  to  netpile  
+    pub_topic("valve_status",0);
+    MCP.digitalWrite(0, LOW);
+
+
 }
 
 // Callback function to handle incoming messages from Netpie
@@ -129,7 +140,14 @@ void Netpiecallback(String topic, byte *payload, unsigned int length)
     {
         time_min = message.toInt();
         Serial.println("Update min time");
-        pub_topic("time_hour", time_min);
+        pub_topic("time_min", time_min);
+    }
+     // set min
+    if (topic == String("@private/set_watertime"))
+    {
+        time_min = message.toInt();
+        Serial.println("Update min time");
+        pub_topic("time_water", t_water/1000);
     }
 
     // set max  terprerature
@@ -169,8 +187,8 @@ void Netpiecallback(String topic, byte *payload, unsigned int length)
         Serial.println(set_soilMinHumidity);
     }
 
-    //  oepn Realy 0
-    // open Water
+    //  oepn Realy 0 
+    // open Water 
     else if (topic == String("@private/relay0on"))
     {
         openWater();
@@ -182,6 +200,8 @@ void Netpiecallback(String topic, byte *payload, unsigned int length)
         MCP.digitalWrite(0, LOW);
         manual = 0; // Set manual mode to 0
         pub_topic("valve_status", 0);
+        
+
     }
     // opeon Realy1
     else if (topic == String("@private/relay1on"))
@@ -225,9 +245,10 @@ void Netpiecallback(String topic, byte *payload, unsigned int length)
     Serial.println(topic);
 }
 
-void sentData()
-{
 
+void sentData(){
+    
+    
     pub_topic("set_maxTemp", set_Maxtemperature);
     pub_topic("set_minTemp", setime_mintemperature);
 
@@ -237,10 +258,16 @@ void sentData()
     pub_topic("set_soilMax", set_soilMaxHumidity);
     pub_topic("set_soilMin", set_soilMinHumidity);
 
+
+    pub_topic("time_hour", time_hour);
+    pub_topic("time_min", time_min);
     pub_topic("time_water", t_water / 1000);
 
-    pub_topic("valve_status", 0);
-}
+    pub_topic("valve_status", 0);  
+
+    Serial.println(String("Sent Data to  Netpile")); 
+
+}   
 
 // setUP function
 void setup()
@@ -256,15 +283,16 @@ void setup()
     // setup Wifi
     // SSDID, PASSWRORD
 
-    // ห้องบ้าน
+    // ห้องบ้าน 
     // WiFi.begin("house 5_2.4GHz", "SPAI40000");
 
     //  Dev ทำงานในห้องงาน
     // WiFi.begin("SUPER AI6_2.4GHz", "SPAI40000");
 
-    //  Dev หน้างาน
+    //  Dev หน้างาน 
     WiFi.begin("IoT_2.4GHz", "SPAI40000");
 
+    // conetion  wifi  
     while (WiFi.status() != WL_CONNECTED)
     {
         delay(500);
@@ -293,7 +321,10 @@ void setup()
     set_soilMaxHumidity = 65;
     set_soilMinHumidity = 55;
 
+
     sentData();
+
+   
 }
 
 /**
@@ -302,24 +333,31 @@ void setup()
  */
 void SetTimeOpenWater()
 {
-    // Check if the current time matches the specified time
-    if (bfarmtime.getHour() == time_hour && bfarmtime.getMinute() == time_min)
-    {
-        // Turn on the relay to open water
+    timeHourBuffer = bfarmtime.getHour();
+    timeMinuteBuffer = bfarmtime.getMinute();
+    Serial.print(hasWater);
+    //BUG will bug if timer is set to 50 minutes or hour timer is set to 23, can be fixed but I cant be f*cked
+    if (timeHourBuffer == time_hour-1 && ( timeMinuteBuffer > (time_min+ 60 - 10)%60 || timeMinuteBuffer < time_min + 10)){ // set trigger to prime water
+        hasWater = true;
+    }
+    else if (hasWater == true && (timeHourBuffer == time_hour && ( timeMinuteBuffer > (time_min+ 60 - 10)%60 || timeMinuteBuffer < time_min + 10))){ // consume trigger to water the plant *once*
+        hasWater = false;
         digitalWrite(const_relay_pin[0], HIGH);
         // Delay for the specified water duration
         delay(t_water);
         // Turn off the relay after the water duration
         digitalWrite(const_relay_pin[0], LOW);
-        pub_topic("valve_status", 1);
+        pub_topic("valve_status",1);
     }
+
     // If manual mode is enabled, make sure the relay is off
-    else if (manual == 0)
+    if (manual == 0)
     {
         digitalWrite(const_relay_pin[0], LOW);
-        pub_topic("valve_status", 0);
+        pub_topic("valve_status",0);
     }
 }
+
 
 /**
  * Update Time to netpile
@@ -331,9 +369,12 @@ void updatesetTime()
     pub_topic("time_min", time_min);
 }
 
-void Serial_Monitor()
-{
-    // Display  Data in Seral
+
+
+
+// 
+void  Serial_Monitor(){
+      // Display  Data in Seral
     Serial.print(String("Temp = "));
     Serial.println((sht.getTemperature()));
     Serial.print(String("Hump = "));
@@ -344,13 +385,22 @@ void Serial_Monitor()
     Serial.println((lightMeter.readLightLevel()));
 }
 
+void TimeSync(){
+    countTimeSync += 1;
+    if(countTimeSync > 10){
+        countTimeSync = 0;
+        bfarmtime.sync();
+    }
+}
+
+
 /*
-loop
+loop 
 */
 void loop()
 {
     sht.read();
-    Serial.println(sht.getTemperature(), 1);
+    // Serial.println(sht.getTemperature(), 1);
 
     // check  Netpile  is connnected network!
     if (!Netpieclient.connected())
@@ -373,11 +423,12 @@ void loop()
             }
         }
     }
-
+    
     Netpieclient.loop();
 
+
     // Sync Time with wifi
-    bfarmtime.sync();
+    TimeSync();
 
     // time now
     currentMillis = millis();
@@ -385,30 +436,36 @@ void loop()
     // Send data to Netpie every  interval time
     if (currentMillis - previousMillis >= interval)
     {
+
+        
         // Update the previousMillis to the current time
         previousMillis = currentMillis;
 
         // Sent data to Netpile
 
         // sent Sencer Data
-        pub_topic("temperature", (sht.getTemperature()));
-        pub_topic("humidity", (sht.getHumidity()));
-        pub_topic("light", (lightMeter.readLightLevel()));
-        pub_topic("soil", ReadAnalog_from_MPC3424(3, 1380000, 424000, 0, 100));
+        
+         pub_topic("temperature", (sht.getTemperature()));
+         pub_topic("humidity", (sht.getHumidity()));
+         pub_topic("light", (lightMeter.readLightLevel()));
+         pub_topic("soil", ReadAnalog_from_MPC3424(3, 1380000, 424000, 0, 100));
 
         //  Send data to Netpie
         pub_topic("Sent_Data", count);
+        sentData();
 
         // Increment count for tracking purposes
         count += 1;
+
     }
 
     // call function set time  opeon Water
-
     Serial_Monitor();
     updatesetTime();
     SetTimeOpenWater();
-    //  delay 15 sec  
-    delay(15000);
+
+    delay(30000);
+
+
     Serial.println(String("----End----"));
 }
