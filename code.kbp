@@ -60,7 +60,7 @@ int setime_minHumidity;
 int set_soilMaxHumidity;
 int set_soilMinHumidity;
 
-// Set time to send data every 10  minunite
+// Set time to send data every 1  minunite
 const long interval = 30000; // 30 Sec
 unsigned long previousMillis = 0;
 unsigned long currentMillis;
@@ -282,15 +282,7 @@ void setup()
 
     // setup Wifi
     // SSDID, PASSWRORD
-
-    // ห้องบ้าน 
-    // WiFi.begin("house 5_2.4GHz", "SPAI40000");
-
-    //  Dev ทำงานในห้องงาน
-    // WiFi.begin("SUPER AI6_2.4GHz", "SPAI40000");
-
-    //  Dev หน้างาน 
-    WiFi.begin("IoT_2.4GHz", "SPAI40000");
+    WiFi.begin("", "");
 
     // conetion  wifi  
     while (WiFi.status() != WL_CONNECTED)
